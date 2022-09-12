@@ -4,6 +4,7 @@ from io import BytesIO
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import requests
+import pdfkit
 from pydantic import validate_arguments
 
 from .ocr_reader import NoOCRReaderFound, OCRReader, get_ocr_reader
@@ -191,10 +192,13 @@ class ImageDocument(Document):
 @validate_arguments
 def load_document(fpath: str, ocr_reader: Optional[Union[str, OCRReader]] = None):
     if fpath.startswith("http://") or fpath.startswith("https://"):
-        resp = requests.get(fpath, stream=True)
-        if not resp.ok:
-            raise UnsupportedDocument(f"Failed to download: {resp.content}")
-        b = resp.raw
+        if fpath.endswith(("pdf", "png")):
+            resp = requests.get(fpath, stream=True)
+            if not resp.ok:
+                raise UnsupportedDocument(f"Failed to download: {resp.content}")
+            b = resp.raw
+        else:
+            b = pdfkit.from_url(fpath, "out.pdf")
     else:
         b = open(fpath, "rb")
     return load_bytes(b, fpath, ocr_reader=ocr_reader)
